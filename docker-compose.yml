@@ -1,0 +1,150 @@
+version: '3.3'
+
+services:
+  mongo:
+    container_name: mongo
+    image: mongo
+    restart: always
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_DATABASE: matches
+
+  postgres:
+    container_name: postgres
+    image: postgres:13.1-alpine
+    restart: always
+    networks:
+      - nginx
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 2029
+      POSTGRES_DB: users
+
+  dwh:
+    container_name: dwh
+    image: postgres:13.1-alpine
+    restart: always
+    networks:
+      - nginx
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_USER: post
+      POSTGRES_PASSWORD: 20292029
+      POSTGRES_DB: dwh
+
+#  zookeeper:
+#    container_name: zookeeper
+#    image: wurstmeister/zookeeper
+#    networks:
+#      - nginx
+#    ports:
+#      - "2181:2181"
+#    environment:
+#      - ZOOKEEPER_CLIENT_PORT=2181
+#
+#  kafka:
+#    container_name: kafka
+#    image: wurstmeister/kafka
+#    depends_on:
+#      - zookeeper
+#    networks:
+#        - nginx
+#    ports:
+#      - "9092:9092"
+#      - "9093:9093"
+#    hostname: kafka
+#    environment:
+#      KAFKA_ADVERTISED_HOST_NAME: localhost
+#      KAFKA_ADVERTISED_PORT: 9092
+#      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+
+  zookeeper:
+    image: docker.io/bitnami/zookeeper:3.8
+    container_name: zookeeper
+    ports:
+      - "2181:2181"
+    environment:
+      - ALLOW_ANONYMOUS_LOGIN=yes
+    networks:
+      - nginx
+
+  kafka:
+    image: docker.io/bitnami/kafka:3.1
+    container_name: kafka
+    ports:
+      - "9092:9092"
+      - "9093:9093"
+    environment:
+      KAFKA_CFG_ZOOKEEPER_CONNECT: zookeeper:2181
+      ALLOW_PLAINTEXT_LISTENER: yes
+      KAFKA_CFG_LISTENERS: LISTENER_APP://kafka:9092,LISTENER_UI://kafka:9093
+      KAFKA_CFG_ADVERTISED_LISTENERS: LISTENER_APP://localhost:9092,LISTENER_UI://kafka:9093
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: LISTENER_APP:PLAINTEXT,LISTENER_UI:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: LISTENER_UI
+    depends_on:
+      - zookeeper
+    networks:
+      - nginx
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui
+    container_name: kafka-ui
+    networks:
+      - nginx
+    ports:
+      - "8081:8080"
+    restart: always
+    environment:
+      - KAFKA_CLUSTERS_0_NAME=local
+      - KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=kafka:9093
+      #- KAFKA_CLUSTERS_0_ZOOKEEPER=localhost:2181
+
+  debezium:
+    container_name: Debezium
+    depends_on:
+      - kafka
+    image: debezium/connect-jdbc
+    ports:
+      - "8083:8083"
+    environment:
+      BOOTSTRAP_SERVERS: kafka:9093
+      OFFSET_STORAGE_TOPIC: mytube-connector-offsets
+      CONNECT_STATUS_STORAGE_TOPIC: mytube-connector-status
+      CONFIG_STORAGE_TOPIC: mytube-connector-config
+      GROUP_ID: mytube-group
+#    volumes:
+#      - debezium-logs:/kafka/logs
+#      - debezium-conf:/kafka/config
+    links:
+      - zookeeper
+      - kafka
+      - postgres
+      - dwh
+    networks:
+      - nginx
+
+  metabase:
+    image: metabase/metabase
+    restart: always
+    ports:
+      - "3001:3000"
+    environment:
+      MB_DB_TYPE: postgres
+      MB_DB_DBNAME: dwh
+      MB_DB_PORT: 5432
+      MB_DB_USER: post
+      MB_DB_PASS: 20292029
+      MB_DB_HOST: dwh
+    depends_on:
+      - dwh
+    networks:
+      - nginx
+    links:
+      - dwh
+
+networks:
+  nginx:

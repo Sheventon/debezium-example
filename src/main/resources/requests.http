@@ -1,0 +1,53 @@
+POST http://localhost:8083/connectors
+Content-Type: application/json
+
+{
+  "name": "mytube-source-connector",
+  "config": {
+    "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
+    "plugin.name": "pgoutput",
+    "database.hostname": "postgres",
+    "database.port": "5432",
+    "database.user": "postgres",
+    "database.password": "2029",
+    "database.dbname": "users",
+    "database.server.name": "pg_dev",
+    "table.include.list": "public.(.*)",
+    "heartbeat.interval.ms": "5000",
+    "slot.name": "postgrese_debezium",
+    "transforms": "route",
+    "transforms.route.type": "org.apache.kafka.connect.transforms.RegexRouter",
+    "transforms.route.regex": "([^.]+)\\.([^.]+)\\.([^.]+)",
+    "transforms.route.replacement": "$3"
+  }
+}
+
+###
+GET http://localhost:8083/connectors/
+
+###
+GET http://localhost:8083/connectors/mytube-sink-connector/status
+
+###
+DELETE http://localhost:8083/connectors/mytube-sink-connector
+
+###
+POST http://localhost:8083/connectors
+Content-Type: application/json
+
+{
+  "name": "mytube-sink-connector",
+  "config": {
+    "connector.class": "io.confluent.connect.jdbc.JdbcSinkConnector",
+    "tasks.max": "1",
+    "topics": "users",
+    "delete.enabled": "false",
+    "pk.fields": "id",
+    "pk.mode": "record_value",
+    "connection.url": "jdbc:postgresql://dwh:5432/dwh?user=post&password=20292029",
+    "transforms": "unwrap",
+    "transforms.unwrap.type": "io.debezium.transforms.ExtractNewRecordState",
+    "auto.create": "true",
+    "insert.mode": "upsert"
+  }
+}

@@ -1,0 +1,28 @@
+spring:
+  data:
+    mongodb:
+      host: localhost
+      port: 27017
+      database: matches
+  datasource-primary:
+    url: jdbc:postgresql://localhost:5432/users
+    username: postgres
+    password: 2029
+    driver-class-name: org.postgresql.Driver
+  datasource-secondary:
+    url: jdbc:postgresql://localhost:5433/dwh
+    username: post
+    password: 20292029
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    show-sql: true
+    hibernate:
+      ddl-auto: update
+
+  kafka:
+    bootstrap-servers: kafka:9092
+    group-id: watchLogs
+
+#Match Number,Round Number,Date,Location,Home Team,Away Team,Group,Result
